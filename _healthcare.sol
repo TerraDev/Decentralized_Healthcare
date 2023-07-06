@@ -55,6 +55,15 @@ contract Healthcare{
         title = _title;
     }
 
+    function setAmount(uint w) public {
+        require(
+            msg.sender == Admin,
+            "Only admin can perform this operation."
+        );
+
+        amount = w;
+    }
+
     //patient sends registration request
     function RegisterPatientRequest(/*address p_addr, */string memory Username) public{
         require(
@@ -87,6 +96,10 @@ contract Healthcare{
         require(
             msg.sender == Admin,
             "Only Admin can perform this operation"
+        ); 
+        require(
+            patients[p_addr].RegistrationPending,
+            "This address did not request for registration as patient."
         ); 
 
         patients[p_addr].RegistrationPending = false;
@@ -127,6 +140,10 @@ contract Healthcare{
             msg.sender == Admin,
             "Only Admin can perform this operation"
         ); 
+        require(
+            doctors[d_addr].RegistrationPending,
+            "This address did not request for registration as doctor."
+        ); 
 
         doctors[d_addr].RegistrationPending = false;
         doctors[d_addr].IsMember = Accepted;
@@ -166,7 +183,7 @@ contract Healthcare{
         address rand_addr = address(bytes20(keccak256(abi.encodePacked(block.timestamp))));
         sessions[rand_addr] = s;
 
-        sessions_to_show[sessions_cnt] = sessions[msg.sender];//added
+        sessions_to_show[sessions_cnt] = sessions[rand_addr]; //sessions[msg.sender];
         sessions_addresses[sessions_cnt] = rand_addr;
         sessions_cnt++;//added
 
@@ -179,7 +196,8 @@ contract Healthcare{
             "You do not have permission to perform operation."
         ); 
         require(
-            patients[sessions[sess].patient].IsMember,
+            //patients[sessions[sess].patient].IsMember,
+            patients[pat].IsMember,
             "Patient address does not exist."
         ); 
         require(
@@ -203,23 +221,28 @@ contract Healthcare{
     //let doctor/patient access record data (including upfs hash)
     function Get_session_data(address sess) public view returns (Session memory){
         require(
-                sessions[sess].doctor == msg.sender || sessions[sess].patient == msg.sender ,
+                sessions[sess].doctor == msg.sender || sessions[sess].patient == msg.sender || msg.sender == Admin,
                 "You don't have permission to access session's data."
             );
 
             return sessions[sess];
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //Escrow Service:
     //function Pay2Doc
     function Pay2Doc(address sess) public payable {
         require(
             Admin == msg.sender || sessions[sess].patient == msg.sender ,
             "You don't have permission to access session's data."
         );
+        require(
+            !sessions[sess].PaymentDone ,
+            "The payment is already done."
+        );
 
-        bool sent = payable(sessions[sess].doctor).send(amount);
-
-        require(sent, "Transaction failed");
+        //bool sent = payable(sessions[sess].doctor).send(amount);
+        //require(sent, "Transaction failed");
 
         sessions[sess].PaymentDone = true;
         patients[sessions[sess].patient].WaitingForDoctor = false;
@@ -229,15 +252,18 @@ contract Healthcare{
 
 
     //function PayBack2Patient
-    function PayBack2Patient(address sess) public{
+    function PayBack2Patient(address sess) public payable{
+        require(
+            sessions[sess].doctor == msg.sender || Admin == msg.sender ,
+            "You don't have permission to perform this operation."
+        );
         require(
             sessions[sess].doctor == msg.sender || Admin == msg.sender ,
             "You don't have permission to access session's data."
         );
 
-         bool sent = payable(sessions[sess].patient).send(amount);
-
-        require(sent, "Transaction failed");
+        //bool sent = payable(sessions[sess].patient).send(amount);
+        //require(sent, "Transaction failed");
 
         sessions[sess].PaymentDone = true;
         patients[sessions[sess].patient].WaitingForDoctor = false;
@@ -247,17 +273,21 @@ contract Healthcare{
 
     //half-payback if patient is fake
     //prevents request spamming
-    function HalfPayBack(address sess) public{
+    function HalfPayBack(address sess) public payable{
         require(
             sessions[sess].doctor == msg.sender || Admin == msg.sender ,
-            "You don't have permission to access session's data."
+            "You don't have permission to perform this operation."
+        );
+        require(
+            !sessions[sess].PaymentDone ,
+            "The payment is already done."
         );
 
-        bool sent1 = payable(sessions[sess].patient).send(amount/2);
-        require(sent1,"failed to pay patient.");
+        //bool sent1 = payable(sessions[sess].patient).send(amount/2);
+        //require(sent1,"failed to pay patient.");
 
-        bool sent2 = payable(sessions[sess].doctor).send(amount/2);
-        require(sent2,"failed to pay doctor.");
+        //bool sent2 = payable(sessions[sess].doctor).send(amount/2);
+        //require(sent2,"failed to pay doctor.");
 
         sessions[sess].PaymentDone = true;
         patients[sessions[sess].patient].WaitingForDoctor = false;
@@ -310,6 +340,4 @@ contract Healthcare{
         }
         return (ret, retAddr);
     }
-
-    // create IPFS (storage.ipfs.org)
 }

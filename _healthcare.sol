@@ -214,7 +214,7 @@ contract Healthcare{
         );
 
         doctors[doc].Available = false;
-
+        sessions[sess].doctor = doc;
         patients[pat].WaitingForDoctor = false;
     }
 
@@ -241,8 +241,8 @@ contract Healthcare{
             "The payment is already done."
         );
 
-        //bool sent = payable(sessions[sess].doctor).send(amount);
-        //require(sent, "Transaction failed");
+        bool sent = payable(sessions[sess].doctor).send(amount);
+        require(sent, "Transaction failed");
 
         sessions[sess].PaymentDone = true;
         patients[sessions[sess].patient].WaitingForDoctor = false;
@@ -262,8 +262,8 @@ contract Healthcare{
             "You don't have permission to access session's data."
         );
 
-        //bool sent = payable(sessions[sess].patient).send(amount);
-        //require(sent, "Transaction failed");
+        bool sent = payable(sessions[sess].patient).send(amount);
+        require(sent, "Transaction failed");
 
         sessions[sess].PaymentDone = true;
         patients[sessions[sess].patient].WaitingForDoctor = false;
@@ -283,11 +283,11 @@ contract Healthcare{
             "The payment is already done."
         );
 
-        //bool sent1 = payable(sessions[sess].patient).send(amount/2);
-        //require(sent1,"failed to pay patient.");
+        bool sent1 = payable(sessions[sess].patient).send(amount/2);
+        require(sent1,"failed to pay patient.");
 
-        //bool sent2 = payable(sessions[sess].doctor).send(amount/2);
-        //require(sent2,"failed to pay doctor.");
+        bool sent2 = payable(sessions[sess].doctor).send(amount/2);
+        require(sent2,"failed to pay doctor.");
 
         sessions[sess].PaymentDone = true;
         patients[sessions[sess].patient].WaitingForDoctor = false;
